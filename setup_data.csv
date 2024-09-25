@@ -1,0 +1,6 @@
+Column,Level 1,Level 2,Level 3,Level 4,Level 5,Level 6,Distributions,Transformations
+why,True,True,True,True,True,True,"['Normal', 'Triangular', 'Uniform']","['No', 'Sqrt', 'Normalize', 'Log', 'Arcsinh']"
+dpe,True,True,True,True,True,True,"['Normal', 'Triangular', 'Uniform']","['No', 'Sqrt', 'Normalize', 'Log', 'Arcsinh']"
+ERE,True,True,True,True,True,True,"['Normal', 'Triangular', 'Uniform']","['No', 'Sqrt', 'Normalize', 'Log', 'Arcsinh']"
+gg,True,True,True,True,True,True,"['Normal', 'Triangular', 'Uniform']","['No', 'Sqrt', 'Normalize', 'Log', 'Arcsinh']"
+ggg,True,True,True,True,True,True,"['Normal', 'Triangular', 'Uniform']","['No', 'Sqrt', 'Normalize', 'Log', 'Arcsinh']"
