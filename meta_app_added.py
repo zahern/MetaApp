@@ -14,7 +14,6 @@ class DecisionApp:
         self.column_distributions = {}
         self.column_transformations = {}
 
-        # Define the layout with initial empty and disabled states
         layout = [
             [sg.Text("Load a CSV file to continue.")],
             [sg.Button("Load CSV")],
@@ -54,17 +53,12 @@ class DecisionApp:
                 self.current_index = 0
                 self.decisions = []
 
-                # Store all column names
                 self.column_names = self.data.columns.tolist()
 
-                # Update the combo boxes with column names
                 self.window["-Y-"].update(values=self.column_names)
-
-                # Update grouped and panel columns with "None" option
                 self.window["-GROUPED-"].update(values=["None"] + self.column_names)
                 self.window["-PANEL-"].update(values=["None"] + self.column_names)
 
-                # Calculate column characteristics: type, min, max
                 self.column_info = {}
                 for col in self.column_names:
                     self.column_info[col] = {
@@ -107,34 +101,29 @@ class DecisionApp:
             info = self.column_info[current_column]
             self.window["-COLUMN-INFO-"].update(f"Type: {info['type']}, Min: {info['min']}, Max: {info['max']}")
 
-            # Initialize distributions for the current column if not set
             if current_column not in self.column_distributions:
                 self.column_distributions[current_column] = ["Normal", "Triangular", "Uniform"]
 
             self.window["-DISTRIBUTIONS-"].update(values=self.column_distributions[current_column])
 
-            # Initialize transformations for the current column if not set
             if current_column not in self.column_transformations:
-                self.column_transformations[current_column] = ["No", "Sqrt", "Normalize", "Log", "Arcsinh"]
+                self.column_transformations[current_column] = []
 
             self.window["-TRANSFORMATIONS-"].update(values=self.column_transformations[current_column])
 
-            # Enable buttons for distributions and transformations
             self.window["Remove Selected Distribution"].update(disabled=False)
             self.window["Add Distribution"].update(disabled=False)
             self.window["Remove Selected Transformation"].update(disabled=False)
             self.window["Add Transformation"].update(disabled=False)
 
             for i in range(1, 7):
-                self.window[f"-LEVEL{i}-"].update(True)  # Set all to True
+                self.window[f"-LEVEL{i}-"].update(True)
 
-            # Disable Level 5 if no grouped term is selected
             if self.grouped_column == "None":
                 self.window["-LEVEL5-"].update(disabled=True)
             else:
                 self.window["-LEVEL5-"].update(disabled=False)
 
-            # Update Save Decisions button state
             if self.current_index == len(self.columns_to_process) - 1:
                 self.window["Save Decisions"].update(disabled=False)
 
@@ -147,7 +136,7 @@ class DecisionApp:
             decisions = [self.window[f"-LEVEL{i}-"].get() for i in range(1, 7)]
             current_column = self.columns_to_process[self.current_index]
             distributions = self.column_distributions[current_column]
-            transformations = self.column_transformations[current_column]  # Get transformations
+            transformations = self.column_transformations[current_column]
             self.decisions.append((current_column, *decisions, distributions, transformations))
             self.current_index += 1
             self.show_column()
@@ -167,13 +156,21 @@ class DecisionApp:
 
     def open_hyperparameter_window(self):
         layout = [
-            [sg.Text("Select Model Type:")],
-            [sg.Combo(["Poisson", "Negative Binomial"], key="-MODEL_TYPE-")],
-            [sg.Text("Select Metaheuristic Algorithm:")],
-            [sg.Combo(["HS", "DE", "SA"], key="-METAHEURISTIC-")],
-            [sg.Text("Hyperparameters:")],
-            [sg.Text("Param 1:"), sg.Slider(range=(0, 100), default_value=50, orientation='h', key="-PARAM1-")],
-            [sg.Text("Param 2:"), sg.Slider(range=(0, 100), default_value=50, orientation='h', key="-PARAM2-")],
+            [sg.Text("Select Model Types (Hold Ctrl to select multiple):")],
+            [sg.Listbox(values=["Poisson", "Negative Binomial"], select_mode=sg.LISTBOX_SELECT_MODE_MULTIPLE, key="-MODEL_TYPE-")],
+            [sg.Text("Select Objective:")],
+            [sg.Radio("Single Objective", "OBJECTIVE", key="-SINGLE-OBJECTIVE-", default=True)],
+            [sg.Radio("Multi-Objective", "OBJECTIVE", key="-MULTI-OBJECTIVE-")],
+            [sg.Text("Select Primary Objective Metric:")],
+            [sg.Combo(["BIC", "AIC", "RMSE"], key="-OBJECTIVE_METRIC-")],
+            [sg.Text("Select Secondary Objective Metric:")],
+            [sg.Combo(["BIC", "AIC", "RMSE"], key="-SECOND_OBJECTIVE_METRIC-", disabled=True)],
+            [sg.Text("MAXTIME (seconds):"), sg.InputText("240000", key="-MAXTIME-"), sg.Button("?", tooltip="Time in seconds.")],
+            [sg.Text("Number of Iterations without Improvement:"), sg.Slider(range=(1, 1000), default_value=100, orientation='h', key="-ITERATIONS-")],
+            [sg.Text("Do you want a validation split?"), sg.Radio("Yes", "VALIDATION", key="-VALIDATION-YES-"), sg.Radio("No", "VALIDATION", key="-VALIDATION-NO-")],
+            [sg.Text("Train Split (%):"), sg.InputText("80", key="-TRAIN_SPLIT-")],
+            [sg.Text("Validation Split (%):"), sg.InputText("10", key="-VALIDATION_SPLIT-", disabled=True)],
+            [sg.Text("Test Split (%):"), sg.InputText("10", key="-TEST_SPLIT-", disabled=True)],
             [sg.Button("Save Hyperparameters"), sg.Button("Cancel")]
         ]
 
@@ -181,19 +178,42 @@ class DecisionApp:
 
         while True:
             event, values = hyper_window.read()
+
+            # Enable/disable secondary objective metric dropdown based on the selected objective type
+            if values["-MULTI-OBJECTIVE-"]:
+                hyper_window["-SECOND_OBJECTIVE_METRIC-"].update(disabled=False)
+            else:
+                hyper_window["-SECOND_OBJECTIVE_METRIC-"].update(disabled=True)
+
+            # Enable/disable validation split inputs based on selection
+            if values["-VALIDATION-YES-"]:
+                hyper_window["-VALIDATION_SPLIT-"].update(disabled=False)
+                hyper_window["-TEST_SPLIT-"].update(disabled=False)
+            else:
+                hyper_window["-VALIDATION_SPLIT-"].update(disabled=True)
+                hyper_window["-VALIDATION_SPLIT-"].update(value="0")
+                hyper_window["-TEST_SPLIT-"].update(disabled=True)
+                hyper_window["-TEST_SPLIT-"].update(value="100")
+
             if event in (sg.WIN_CLOSED, "Cancel"):
                 break
-            elif event == "Save Hyperparameters":
+
+            if event == "Save Hyperparameters":
                 self.save_hyperparameters(values)
 
         hyper_window.close()
 
     def save_hyperparameters(self, values):
         hyperparameters = {
-            "Model Type": values["-MODEL_TYPE-"],
-            "Metaheuristic": values["-METAHEURISTIC-"],
-            "Param 1": values["-PARAM1-"],
-            "Param 2": values["-PARAM2-"]
+            "Model Types": values["-MODEL_TYPE-"],
+            "Objective Type": "Single" if values["-SINGLE-OBJECTIVE-"] else "Multi",
+            "Primary Objective Metric": values["-OBJECTIVE_METRIC-"],
+            "Secondary Objective Metric": values["-SECOND_OBJECTIVE_METRIC-"] if values["-MULTI-OBJECTIVE-"] else None,
+            "MAXTIME": values["-MAXTIME-"],
+            "Iterations": values["-ITERATIONS-"],
+            "Train Split": values["-TRAIN_SPLIT-"],
+            "Validation Split": values["-VALIDATION_SPLIT-"] if values["-VALIDATION-YES-"] else "0",
+            "Test Split": values["-TEST_SPLIT-"] if values["-VALIDATION-YES-"] else "100"
         }
         df = pd.DataFrame([hyperparameters])
         df.to_csv("setup_hyper.csv", index=False)

@@ -1,6 +1,7 @@
 import pandas as pd
 import PySimpleGUI as sg
 
+
 class DecisionApp:
     def __init__(self):
         self.data = None
@@ -14,7 +15,6 @@ class DecisionApp:
         self.column_distributions = {}
         self.column_transformations = {}
 
-        # Define the layout with initial empty and disabled states
         layout = [
             [sg.Text("Load a CSV file to continue.")],
             [sg.Button("Load CSV")],
@@ -22,7 +22,7 @@ class DecisionApp:
             [sg.Text("Grouped Column: "), sg.Combo(["None"], key="-GROUPED-")],
             [sg.Text("Panel Column: "), sg.Combo(["None"], key="-PANEL-")],
             [sg.Text("Y Column: "), sg.Combo([], key="-Y-")],
-            [sg.Button("Set Columns"), sg.Button("Next"), sg.Button("Save Decisions")],
+            [sg.Button("Set Columns"), sg.Button("Next"), sg.Button("Save Decisions", disabled=True)],
             [sg.Text("Current Column: ", size=(20, 1)), sg.Text("", key="-CURRENT-COLUMN-")],
             [sg.Text("", size=(20, 1), key="-DISPLAY-COLUMN-")],
             [sg.Text("", size=(40, 1), key="-COLUMN-INFO-")],
@@ -32,7 +32,8 @@ class DecisionApp:
                 sg.Button("Add Distribution", disabled=True)
             ],
             [
-                sg.Listbox(values=[], select_mode=sg.LISTBOX_SELECT_MODE_MULTIPLE, key="-TRANSFORMATIONS-", size=(30, 6)),
+                sg.Listbox(values=[], select_mode=sg.LISTBOX_SELECT_MODE_MULTIPLE, key="-TRANSFORMATIONS-",
+                           size=(30, 6)),
                 sg.Button("Remove Selected Transformation", disabled=True),
                 sg.Button("Add Transformation", disabled=True)
             ],
@@ -41,10 +42,11 @@ class DecisionApp:
             [sg.Checkbox("Level 3", key="-LEVEL3-", default=True), sg.Text("Random Parameters")],
             [sg.Checkbox("Level 4", key="-LEVEL4-", default=True), sg.Text("Correlated Random Parameters in Means")],
             [sg.Checkbox("Level 5", key="-LEVEL5-", disabled=True), sg.Text("Grouped Random Parameters")],
-            [sg.Checkbox("Level 6", key="-LEVEL6-", default=True), sg.Text("Heterogeneity in Means")]
+            [sg.Checkbox("Level 6", key="-LEVEL6-", default=True), sg.Text("Heterogeneity in Means")],
+            [sg.Button('Setup Hyper-Pararameters')]
         ]
 
-        self.window = sg.Window("METACOUNTREGRESSOR: PREPROCESS DECISIONS", layout)
+        self.window = sg.Window("Decision Maker", layout)
 
     def load_csv(self):
         file_path = sg.popup_get_file("Select a CSV file", file_types=(("CSV Files", "*.csv"),))
@@ -54,17 +56,12 @@ class DecisionApp:
                 self.current_index = 0
                 self.decisions = []
 
-                # Store all column names
                 self.column_names = self.data.columns.tolist()
 
-                # Update the combo boxes with column names
                 self.window["-Y-"].update(values=self.column_names)
-
-                # Update grouped and panel columns with "None" option
                 self.window["-GROUPED-"].update(values=["None"] + self.column_names)
                 self.window["-PANEL-"].update(values=["None"] + self.column_names)
 
-                # Calculate column characteristics: type, min, max
                 self.column_info = {}
                 for col in self.column_names:
                     self.column_info[col] = {
@@ -107,32 +104,31 @@ class DecisionApp:
             info = self.column_info[current_column]
             self.window["-COLUMN-INFO-"].update(f"Type: {info['type']}, Min: {info['min']}, Max: {info['max']}")
 
-            # Initialize distributions for the current column if not set
             if current_column not in self.column_distributions:
                 self.column_distributions[current_column] = ["Normal", "Triangular", "Uniform"]
 
             self.window["-DISTRIBUTIONS-"].update(values=self.column_distributions[current_column])
 
-            # Initialize transformations for the current column if not set
             if current_column not in self.column_transformations:
-                self.column_transformations[current_column] = ['no', 'normalise', 'log', 'sqrt', 'arcsinh']  # Start with no transformations
+                self.column_transformations[current_column] = []
 
             self.window["-TRANSFORMATIONS-"].update(values=self.column_transformations[current_column])
 
-            # Enable buttons for distributions and transformations
             self.window["Remove Selected Distribution"].update(disabled=False)
             self.window["Add Distribution"].update(disabled=False)
             self.window["Remove Selected Transformation"].update(disabled=False)
             self.window["Add Transformation"].update(disabled=False)
 
             for i in range(1, 7):
-                self.window[f"-LEVEL{i}-"].update(True)  # Set all to True
+                self.window[f"-LEVEL{i}-"].update(True)
 
-            # Disable Level 5 if no grouped term is selected
             if self.grouped_column == "None":
                 self.window["-LEVEL5-"].update(disabled=True)
             else:
                 self.window["-LEVEL5-"].update(disabled=False)
+
+            if self.current_index == len(self.columns_to_process) - 1:
+                self.window["Save Decisions"].update(disabled=False)
 
             self.window["-MESSAGE-"].update(f"Processing column: {current_column}...")
         else:
@@ -143,7 +139,7 @@ class DecisionApp:
             decisions = [self.window[f"-LEVEL{i}-"].get() for i in range(1, 7)]
             current_column = self.columns_to_process[self.current_index]
             distributions = self.column_distributions[current_column]
-            transformations = self.column_transformations[current_column]  # Get transformations
+            transformations = self.column_transformations[current_column]
             self.decisions.append((current_column, *decisions, distributions, transformations))
             self.current_index += 1
             self.show_column()
@@ -152,14 +148,177 @@ class DecisionApp:
 
     def save_decisions(self):
         if self.decisions:
-            output_df = pd.DataFrame(self.decisions, columns=["Column"] + [f"Level {i}" for i in range(1, 7)] + ["Distributions", "Transformations"])
-            output_file_path = sg.popup_get_file("Save decisions as", save_as=True, file_types=(("CSV Files", "*.csv"),))
+            output_df = pd.DataFrame(self.decisions,
+                                     columns=["Column"] + [f"Level {i}" for i in range(1, 7)] + ["Distributions",
+                                                                                                 "Transformations"])
+            output_file_path = sg.popup_get_file("Save decisions as", save_as=True,
+                                                 file_types=(("CSV Files", "*.csv"),))
             if output_file_path:
                 output_df.to_csv(output_file_path, index=False)
                 sg.popup("Success", "Decisions saved successfully!")
-                self.select_algorithm()
+                self.open_hyperparameter_window()
         else:
             sg.popup_warning("Warning", "No decisions to save!")
+
+    def open_algorithm_hyperparameter_window(self):
+        # Initial layout with default parameters for Simulated Annealing (SA)
+        layout = [
+            [sg.Text("Select Algorithm:")],
+            [sg.Radio("Simulated Annealing (SA)", "ALGORITHM", enable_events=True,key="-SA-", default=True)],
+            [sg.Radio("Differential Evolution (DE)", "ALGORITHM", enable_events=True,key="-DE-")],
+            [sg.Radio("Hill Climbing (HS)", "ALGORITHM", enable_events=True,key="-HS-")],
+            [sg.Text("Set Hyperparameters:")],
+            [sg.Column(self.get_algorithm_hyperparameters("SA"))],  # Default to SA parameters
+            [sg.Button("Save Algorithm Parameters"), sg.Button("Cancel")]
+        ]
+
+        algorithm_window = sg.Window("Algorithm Hyperparameters", layout, finalize=True)
+
+        while True:
+            event, values = algorithm_window.read()
+
+            # Check if a radio button was clicked
+            if event in ("-SA-", "-DE-", "-HS-"):
+                # Update the layout based on the selected algorithm
+                algorithm_window["-PARAMS-"].update(self.get_algorithm_hyperparameters(event.split('-')[0]))
+
+            if event in (sg.WIN_CLOSED, "Cancel"):
+                break
+
+            if event == "Save Algorithm Parameters":
+                self.save_algorithm_parameters(values)
+
+        algorithm_window.close()
+
+    def get_algorithm_hyperparameters(self, algorithm):
+        """ Returns the layout for the hyperparameters based on the selected algorithm. """
+        if algorithm == "SA":
+            return [
+                [sg.Text("Temperature:"), sg.Slider(range=(1, 100), default_value=50, orientation='h', key="-TEMP-")],
+                [sg.Text("Cooling Rate:"),
+                 sg.Slider(range=(0.01, 1), resolution=0.01, default_value=0.1, orientation='h', key="-COOLING_RATE-")]
+            ]
+        elif algorithm == "DE":
+            return [
+                [sg.Text("Crossover Rate:"),
+                 sg.Slider(range=(0.0, 1.0), resolution=0.01, default_value=0.8, orientation='h', key="-CROSSOVER-")],
+                [sg.Text("Pitch Adjustment:"),
+                 sg.Slider(range=(0, 10), default_value=5, orientation='h', key="-PITCH-")],
+                [sg.Text("Population Size:"),
+                 sg.Slider(range=(5, 100), default_value=20, orientation='h', key="-POP_SIZE-")]
+            ]
+        elif algorithm == "HS":
+            return [
+                [sg.Text("Harmony Memory Size:"),
+                 sg.Slider(range=(5, 100), default_value=20, orientation='h', key="-HMS-")],
+                [sg.Text("HMCR:"),
+                 sg.Slider(range=(0.0, 1.0), resolution=0.01, default_value=0.9, orientation='h', key="-HMCR-")],
+                [sg.Text("Pitch Adjustment Rate:"),
+                 sg.Slider(range=(0.0, 1.0), resolution=0.01, default_value=0.5, orientation='h', key="-PAI-")]
+            ]
+
+    def save_algorithm_parameters(self, values):
+        algorithm_params = {
+            "Algorithm": "SA" if values["-SA-"] else "DE" if values["-DE-"] else "HS",
+            "Temperature": values.get("-TEMP-", None),
+            "Cooling Rate": values.get("-COOLING_RATE-", None),
+            "Crossover Rate": values.get("-CROSSOVER-", None),
+            "Pitch Adjustment": values.get("-PITCH-", None),
+            "Population Size": values.get("-POP_SIZE-", None),
+            "Harmony Memory Size": values.get("-HMS-", None),
+            "HMCR": values.get("-HMCR-", None),
+            "Pitch Adjustment Rate": values.get("-PAI-", None)
+        }
+        # Save or process the algorithm parameters as needed
+        print("Algorithm Parameters:", algorithm_params)
+        sg.popup("Algorithm parameters saved successfully!")
+
+    # Call this method from the appropriate place in your existing code
+    # For example, after saving hyperparameters or wherever logical
+
+
+    def open_hyperparameter_window(self):
+        layout = [
+            [sg.Text("Select Model Types (Hold Ctrl to select multiple):")],
+            [sg.Listbox(values=["Poisson", "Negative Binomial"], select_mode=sg.LISTBOX_SELECT_MODE_MULTIPLE,
+                        key="-MODEL_TYPE-")],
+            [sg.Text("Select Objective:")],
+            [sg.Radio("Single Objective", "OBJECTIVE", enable_events=True,key="-SINGLE-OBJECTIVE-", default=True)],
+            [sg.Radio("Multi-Objective", "OBJECTIVE", enable_events=True,key="-MULTI-OBJECTIVE-")],
+            [sg.Text("Select Primary Objective Metric:")],
+            [sg.Combo(["BIC", "AIC", "RMSE"], key="-OBJECTIVE_METRIC-")],
+            [sg.Text("Select Secondary Objective Metric:")],
+            [sg.Combo(["BIC", "AIC", "RMSE"], key="-SECOND_OBJECTIVE_METRIC-", disabled=True)],
+            [sg.Text("MAXTIME (seconds):"), sg.InputText("240000", key="-MAXTIME-"),
+             sg.Button("?", tooltip="Time in seconds.")],
+            [sg.Text("Number of Iterations without Improvement:"),
+             sg.Slider(range=(1, 1000), default_value=100, orientation='h', key="-ITERATIONS-")],
+            [sg.Text("Do you want a validation split?"),
+             sg.Radio("Yes", "VALIDATION", key="-VALIDATION-YES-", default=False),
+             sg.Radio("No", "VALIDATION", key="-VALIDATION-NO-", default=True)],
+            [sg.Text("Train Split (%):"), sg.InputText("80", key="-TRAIN_SPLIT-", disabled=True)],
+            [sg.Text("Validation Split (%):"), sg.InputText("10", key="-VALIDATION_SPLIT-", disabled=True)],
+            [sg.Text("Test Split (%):"), sg.InputText("10", key="-TEST_SPLIT-", disabled=True)],
+            [sg.Button("Save Hyperparameters"), sg.Button("Cancel")]
+        ]
+
+        hyper_window = sg.Window("Hyperparameter Setup", layout, finalize=True)
+
+        # Initial state setup
+        hyper_window["-SECOND_OBJECTIVE_METRIC-"].update(disabled=True)
+        hyper_window["-TRAIN_SPLIT-"].update(disabled=True)
+        hyper_window["-VALIDATION_SPLIT-"].update(disabled=True)
+        hyper_window["-TEST_SPLIT-"].update(disabled=True)
+
+        while True:
+            event, values = hyper_window.read()
+            print(event)
+            # Check for radio button changes
+            if event in ("-SINGLE-OBJECTIVE-", "-MULTI-OBJECTIVE-"):
+                # Enable/disable secondary objective metric dropdown
+                hyper_window["-SECOND_OBJECTIVE_METRIC-"].update(disabled=not values["-MULTI-OBJECTIVE-"])
+
+                # Enable/disable train, validation, and test split inputs
+                if values["-MULTI-OBJECTIVE-"]:
+                    hyper_window["-TRAIN_SPLIT-"].update(disabled=False)
+                    hyper_window["-VALIDATION_SPLIT-"].update(disabled=False)
+                    hyper_window["-TEST_SPLIT-"].update(disabled=False)
+                else:
+                    hyper_window["-TRAIN_SPLIT-"].update(disabled=True, value="80")
+                    hyper_window["-VALIDATION_SPLIT-"].update(disabled=True, value="10")
+                    hyper_window["-TEST_SPLIT-"].update(disabled=True, value="10")
+
+            # Enable/disable validation split inputs based on selection
+            if values["-VALIDATION-YES-"]:
+                hyper_window["-VALIDATION_SPLIT-"].update(disabled=False)
+                hyper_window["-TEST_SPLIT-"].update(disabled=False)
+            else:
+                hyper_window["-VALIDATION_SPLIT-"].update(disabled=True, value="0")
+                hyper_window["-TEST_SPLIT-"].update(disabled=True, value="100")
+
+            if event in (sg.WIN_CLOSED, "Cancel"):
+                break
+
+            if event == "Save Hyperparameters":
+                self.save_hyperparameters(values)
+
+        hyper_window.close()
+
+    def save_hyperparameters(self, values):
+        hyperparameters = {
+            "Model Types": values["-MODEL_TYPE-"],
+            "Objective Type": "Single" if values["-SINGLE-OBJECTIVE-"] else "Multi",
+            "Primary Objective Metric": values["-OBJECTIVE_METRIC-"],
+            "Secondary Objective Metric": values["-SECOND_OBJECTIVE_METRIC-"] if values["-MULTI-OBJECTIVE-"] else None,
+            "MAXTIME": values["-MAXTIME-"],
+            "Iterations": values["-ITERATIONS-"],
+            "Train Split": values["-TRAIN_SPLIT-"],
+            "Validation Split": values["-VALIDATION_SPLIT-"] if values["-VALIDATION-YES-"] else "0",
+            "Test Split": values["-TEST_SPLIT-"] if values["-VALIDATION-YES-"] else "100"
+        }
+        df = pd.DataFrame([hyperparameters])
+        df.to_csv("setup_hyper.csv", index=False)
+        sg.popup("Hyperparameters saved as setup_hyper.csv")
 
     def remove_distribution(self):
         selected = self.window["-DISTRIBUTIONS-"].get_indexes()
@@ -197,10 +356,6 @@ class DecisionApp:
             else:
                 sg.popup_warning("Transformation already exists.")
 
-    def select_algorithm(self):
-        # Algorithm selection remains unchanged
-        ...
-
     def run(self):
         while True:
             event, values = self.window.read()
@@ -225,8 +380,11 @@ class DecisionApp:
                 self.remove_transformation()
             elif event == "Add Transformation":
                 self.add_transformation()
+            elif event == 'Setup Hyper-Pararameters':
+                self.open_algorithm_hyperparameter_window()
 
         self.window.close()
+
 
 if __name__ == "__main__":
     app = DecisionApp()
