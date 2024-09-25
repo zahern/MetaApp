@@ -198,14 +198,9 @@ class DecisionApp:
 
 
 
-                #elem = algorithm_window["-PARAMS-"]  # Clear the column
-                #lgorithm_window["-BLAH-"].update("ee")
-                # Update the column with new parameters
-                #elem.update(new_params)
-                #algorithm_window.refresh()
 
-            #algorithm_window["-PARAMS-"].update(visible=True)
-                #algorithm_window["-PARAMS-"].update(visible=True)
+
+
 
             if event in (sg.WIN_CLOSED, "Cancel"):
                 break
@@ -221,21 +216,28 @@ class DecisionApp:
         print(algorithm)
         if algorithm == "SA":
             return [
-                [sg.Text("Temperature:"), sg.Slider(range=(1, 100), default_value=50, orientation='h', key="-TEMP-")],
+                [sg.Text("Initial Number of Solutions for Probability Acceptance:"),
+                 sg.Slider(range=(1, 100), default_value=50, orientation='h', key="-SLNS-")]
+                [sg.Text("Initial Acceptance Probability:"), sg.Slider(range=(1, 100), default_value=50, orientation='h', key="-TEMP-")],
+                [sg.Text("Crossover Rate:"), sg.Slider(range=(0.01, 1), default_value=0.3, orientation='h', key="-CROSSOVER-")],
                 [sg.Text("Cooling Rate:"),
-                 sg.Slider(range=(0.01, 1), resolution=0.01, default_value=0.1, orientation='h', key="-COOLING_RATE-")]
+                 sg.Slider(range=(0.01, 1), resolution=0.01, default_value=0.95, orientation='h', key="-COOLING_RATE-")],
+                [sg.Text("Mutation Rate:"),
+                sg.Slider(range=(0.01, 1), resolution=0.01, default_value=0.2, orientation='h', key="-COOLING_RATE-")]
             ]
         elif algorithm == "DE":
             return [
                 [sg.Text("Crossover Rate:"),
-                 sg.Slider(range=(0.0, 1.0), resolution=0.01, default_value=0.8, orientation='h', key="-TEMP-")],
-                [sg.Text("Pitch Adjustment:"),
-                 sg.Slider(range=(0, 10), default_value=5, orientation='h', key="-PITCH-")],
+                 sg.Slider(range=(0.0, 1.0), resolution=0.01, default_value=0.8, orientation='h', key="-CROSSOVER-")],
+                [sg.Text("Mutation Rate:"),
+                 sg.Slider(range=(0.01, 1), resolution=0.01, default_value=0.2, orientation='h', key="-COOLING_RATE-")],
+                [sg.Text("Pitch Adjustment Range:"),
+                 sg.Slider(range=(1, 5), default_value=1, orientation='h', key="-PITCH-")],
                 [sg.Text("Population Size:"),
                  sg.Slider(range=(5, 100), default_value=20, orientation='h', key="-POP_SIZE-")]
             ]
         elif algorithm == "HS":
-            print('wju mpt ')
+
             return [
                 [sg.Text("Harmony Memory Size:"),
                  sg.Slider(range=(5, 100), default_value=20, orientation='h', key="-HMS-")],
@@ -243,6 +245,8 @@ class DecisionApp:
                  sg.Slider(range=(0.0, 1.0), resolution=0.01, default_value=0.9, orientation='h', key="-HMCR-")],
                 [sg.Text("Pitch Adjustment Rate:"),
                  sg.Slider(range=(0.0, 1.0), resolution=0.01, default_value=0.5, orientation='h', key="-PAI-")]
+                [sg.Text("Pitch Adjustment Range:"),
+                sg.Slider(range=(1, 5), default_value=1, orientation='h', key="-PITCH-")]
             ]
 
     def save_algorithm_parameters(self, values):
