@@ -1,3 +1,5 @@
+from pickle import FALSE
+
 import pandas as pd
 import PySimpleGUI as sg
 
@@ -167,8 +169,10 @@ class DecisionApp:
             [sg.Radio("Simulated Annealing (SA)", "ALGORITHM", enable_events=True,key="-SA-", default=True)],
             [sg.Radio("Differential Evolution (DE)", "ALGORITHM", enable_events=True,key="-DE-")],
             [sg.Radio("Hill Climbing (HS)", "ALGORITHM", enable_events=True,key="-HS-")],
-            [sg.Text("Set Hyperparameters:")],
-            [sg.Column(self.get_algorithm_hyperparameters("SA"))],  # Default to SA parameters
+            [sg.Text("Set Hyperparameters:", key  = "-BLAH-")],
+            [sg.Column(self.get_algorithm_hyperparameters("SA"), key="-PARAMS-"), sg.Column(self.get_algorithm_hyperparameters("DE"), key="-PARAMSDE-", visible = False)
+             ,sg.Column(self.get_algorithm_hyperparameters("HS"), key="-PARAMSHS-", visible = False)],  # Default to SA parameters
+
             [sg.Button("Save Algorithm Parameters"), sg.Button("Cancel")]
         ]
 
@@ -179,8 +183,29 @@ class DecisionApp:
 
             # Check if a radio button was clicked
             if event in ("-SA-", "-DE-", "-HS-"):
-                # Update the layout based on the selected algorithm
-                algorithm_window["-PARAMS-"].update(self.get_algorithm_hyperparameters(event.split('-')[0]))
+                if event == '-DE-':
+                    algorithm_window["-PARAMS-"].Update(visible=False)
+                    algorithm_window["-PARAMSDE-"].Update(visible = True)
+                    algorithm_window["-PARAMSHS-"].Update(visible=False)
+                elif event == '-SA-':
+                    algorithm_window["-PARAMS-"].Update(visible=True)
+                    algorithm_window["-PARAMSDE-"].Update(visible=False)
+                    algorithm_window["-PARAMSHS-"].Update(visible=False)
+                elif event == '-HS-':
+                    algorithm_window["-PARAMS-"].Update(visible=False)
+                    algorithm_window["-PARAMSDE-"].Update(visible=False)
+                    algorithm_window["-PARAMSHS-"].Update(visible=True)
+
+
+
+                #elem = algorithm_window["-PARAMS-"]  # Clear the column
+                #lgorithm_window["-BLAH-"].update("ee")
+                # Update the column with new parameters
+                #elem.update(new_params)
+                #algorithm_window.refresh()
+
+            #algorithm_window["-PARAMS-"].update(visible=True)
+                #algorithm_window["-PARAMS-"].update(visible=True)
 
             if event in (sg.WIN_CLOSED, "Cancel"):
                 break
@@ -192,6 +217,8 @@ class DecisionApp:
 
     def get_algorithm_hyperparameters(self, algorithm):
         """ Returns the layout for the hyperparameters based on the selected algorithm. """
+
+        print(algorithm)
         if algorithm == "SA":
             return [
                 [sg.Text("Temperature:"), sg.Slider(range=(1, 100), default_value=50, orientation='h', key="-TEMP-")],
@@ -201,13 +228,14 @@ class DecisionApp:
         elif algorithm == "DE":
             return [
                 [sg.Text("Crossover Rate:"),
-                 sg.Slider(range=(0.0, 1.0), resolution=0.01, default_value=0.8, orientation='h', key="-CROSSOVER-")],
+                 sg.Slider(range=(0.0, 1.0), resolution=0.01, default_value=0.8, orientation='h', key="-TEMP-")],
                 [sg.Text("Pitch Adjustment:"),
                  sg.Slider(range=(0, 10), default_value=5, orientation='h', key="-PITCH-")],
                 [sg.Text("Population Size:"),
                  sg.Slider(range=(5, 100), default_value=20, orientation='h', key="-POP_SIZE-")]
             ]
         elif algorithm == "HS":
+            print('wju mpt ')
             return [
                 [sg.Text("Harmony Memory Size:"),
                  sg.Slider(range=(5, 100), default_value=20, orientation='h', key="-HMS-")],
